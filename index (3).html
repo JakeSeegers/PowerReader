@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Speed Reader</title>
+  <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support me on Ko-fi', '#72a4f2', 'C0C6HVPI6');kofiwidget2.draw();</script>  
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+    }
+  </script>
+</head>
+<body class="transition-colors duration-300">
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+    const Play = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>;
+    const Pause = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>;
+    const RotateCcw = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>;
+    const Upload = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>;
+    const BookOpen = () => <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>;
+    const Zap = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>;
+    const Brain = () => <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"></path><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"></path></svg>;
+    const Sun = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>;
+    const Moon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>;
+
+    const SpeedReader = () => {
+      const [originalText, setOriginalText] = useState('');
+      const [rawOriginalText, setRawOriginalText] = useState('');
+      const [optimizedText, setOptimizedText] = useState('');
+      const [currentWord, setCurrentWord] = useState('');
+      const [currentIndex, setCurrentIndex] = useState(0);
+      const [isPlaying, setIsPlaying] = useState(false);
+      const [baseWpm, setBaseWpm] = useState(250);
+      const [paragraphPauseMs, setParagraphPauseMs] = useState(800);
+      const [words, setWords] = useState([]);
+      const [wordParagraphMap, setWordParagraphMap] = useState([]);
+      const [paragraphs, setParagraphs] = useState([]);
+      const [currentParagraph, setCurrentParagraph] = useState(0);
+      const [isAnalyzing, setIsAnalyzing] = useState(false);
+      const [isOptimizing, setIsOptimizing] = useState(false);
+      const [keyTerms, setKeyTerms] = useState([]);
+      const [isFinished, setIsFinished] = useState(false);
+      const [showTypingTrainer, setShowTypingTrainer] = useState(false);
+      const [typingText, setTypingText] = useState('');
+      const [typedText, setTypedText] = useState('');
+      const [currentTypingIndex, setCurrentTypingIndex] = useState(0);
+      const [typingErrors, setTypingErrors] = useState(0);
+      const [typingStartTime, setTypingStartTime] = useState(null);
+      const [typingWPM, setTypingWPM] = useState(0);
+      const [typingComplete, setTypingComplete] = useState(false);
+      const [lastTypingTime, setLastTypingTime] = useState(null);
+      const [typingPaused, setTypingPaused] = useState(false);
+      const [totalPausedTime, setTotalPausedTime] = useState(0);
+      const [pauseStartTime, setPauseStartTime] = useState(null);
+      const [autoCleanEnabled, setAutoCleanEnabled] = useState(true);
+      const [isDarkMode, setIsDarkMode] = useState(false);
+      
+      const intervalRef = useRef(null);
+      const fileInputRef = useRef(null);
+      const typingInputRef = useRef(null);
+      const pauseCheckRef = useRef(null);
+      
+      useEffect(() => {
+        const root = document.documentElement;
+        if (isDarkMode) {
+          root.classList.add('dark');
+        } else {
+          root.classList.remove('dark');
+        }
+      }, [isDarkMode]);
+
+      // Function to find the optimal reading point (anchor letter)
+      // For most words, the anchor should be slightly left of center
+      const findAnchorPosition = (word) => {
+        const cleanWord = word.replace(/[^\w]/g, '');
+        const length = cleanWord.length;
+        
+        // Optimal Reading Point formula - slightly left of center
+        if (length === 1) return 0;
+        if (length === 2) return 0;
+        if (length === 3) return 1;
+        if (length === 4) return 1;
+        if (length === 5) return 2;
+        if (length === 6) return 2;
+        if (length === 7) return 3;
+        if (length === 8) return 3;
+        if (length === 9) return 4;
+        if (length === 10) return 4;
+        if (length === 11) return 4;
+        if (length === 12) return 5;
+        if (length === 13) return 5;
+        // For longer words, use a formula: roughly at 1/3 to center
+        return Math.floor(length / 2.5);
+      };
+
+      const getWordDisplayTime = (word, baseWpm) => {
+        const baseTime = 60000 / baseWpm;
+        const wordLength = word.length;
+        
+        let lengthMultiplier = 1;
+        if (wordLength <= 2) lengthMultiplier = 0.7;
+        else if (wordLength <= 4) lengthMultiplier = 0.85;
+        else if (wordLength <= 6) lengthMultiplier = 1.0;
+        else if (wordLength <= 9) lengthMultiplier = 1.25;
+        else if (wordLength <= 12) lengthMultiplier = 1.5;
+        else lengthMultiplier = 1.8;
+        
+        let punctuationMultiplier = 1;
+        if (word.endsWith('.') || word.endsWith('!') || word.endsWith('?')) {
+          punctuationMultiplier = 1.4;
+        } else if (word.endsWith(',') || word.endsWith(';') || word.endsWith(':')) {
+          punctuationMultiplier = 1.2;
+        }
+        
+        let complexityMultiplier = 1;
+        const hasNumbers = /\d/.test(word);
+        const hasCapitals = /[A-Z]/.test(word.slice(1));
+        const syllableCount = word.toLowerCase().replace(/[^aeiou]/g, '').length || 1;
+        
+        if (hasNumbers) complexityMultiplier += 0.2;
+        if (hasCapitals) complexityMultiplier += 0.15;
+        if (syllableCount > 3) complexityMultiplier += (syllableCount - 3) * 0.1;
+        
+        const totalMultiplier = lengthMultiplier * punctuationMultiplier * complexityMultiplier;
+        const finalMultiplier = Math.max(0.5, Math.min(3.0, totalMultiplier));
+        
+        return Math.round(baseTime * finalMultiplier);
+      };
+
+      const autoCleanCharacters = (text) => {
+        if (!autoCleanEnabled) return text;
+        
+        return text
+          .replace(/\*{2,}/g, '')
+          .replace(/\*([^\*\n]+?)\*/g, '$1')
+          .replace(/_{2,}/g, '')
+          .replace(/_([^_\n\s]+?)_/g, '$1')
+          .replace(/[-—–]{3,}/g, '')
+          .replace(/^[\s]*[•●○▪▫■□◆◇★☆]+[\s]*/gm, '')
+          .replace(/[ \t]+/g, ' ')
+          .replace(/\n{3,}/g, '\n\n');
+      };
+
+      const optimizeTextForReading = (inputText) => {
+        let optimized = inputText;
+        
+        optimized = optimized
+          .replace(/^(In this (lesson|tutorial|section)|This (lesson|tutorial|section) (will|covers?)).*$/gim, '')
+          .replace(/^(You will learn|We will explore|What's covered).*$/gim, '')
+          .replace(/^Terms to Know:?$/gim, '')
+          .replace(/^(\d+\.|\d+[a-z]\.|\([a-z]\))\s*/gm, '')
+          .replace(/\n{3,}/g, '\n\n')
+          .trim();
+        
+        setOptimizedText(optimized);
+        return optimized;
+      };
+
+      const analyzeText = (textToAnalyze) => {
+        setIsAnalyzing(true);
+        
+        const words = textToAnalyze.split(/\s+/);
+        const avgWordLength = words.reduce((sum, w) => sum + w.length, 0) / words.length;
+        const longWords = words.filter(w => w.length > 8).length;
+        const complexity = longWords / words.length;
+        
+        let suggestedWPM = 250;
+        if (avgWordLength > 6 || complexity > 0.2) {
+          suggestedWPM = 200;
+        } else if (avgWordLength < 5 && complexity < 0.1) {
+          suggestedWPM = 300;
+        }
+        
+        const wordFreq = {};
+        words.forEach(word => {
+          const clean = word.replace(/[^\w]/g, '').toLowerCase();
+          if (clean.length > 5) {
+            wordFreq[clean] = (wordFreq[clean] || 0) + 1;
+          }
+        });
+        
+        const keyterms = Object.entries(wordFreq)
+          .filter(([_, count]) => count > 2)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([word]) => word);
+        
+        setBaseWpm(suggestedWPM);
+        setKeyTerms(keyterms);
+        setIsAnalyzing(false);
+      };
+
+      const startTypingTrainer = () => {
+        setShowTypingTrainer(true);
+        
+        const words = optimizedText.split(/\s+/);
+        const targetWordCount = Math.min(300, words.length);
+        let excerpt = words.slice(0, targetWordCount).join(' ');
+        
+        if (targetWordCount < words.length) {
+          const lastPeriod = excerpt.lastIndexOf('.');
+          const lastQuestion = excerpt.lastIndexOf('?');
+          const lastExclamation = excerpt.lastIndexOf('!');
+          const lastSentenceEnd = Math.max(lastPeriod, lastQuestion, lastExclamation);
+          
+          if (lastSentenceEnd > excerpt.length * 0.7) {
+            excerpt = excerpt.substring(0, lastSentenceEnd + 1);
+          }
+        }
+        
+        const cleanSummary = excerpt
+          .replace(/\n\s*\n/g, ' ')
+          .replace(/\n/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        
+        const normalizedSummary = cleanSummary
+          .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"')
+          .replace(/[\u2018\u2019\u201A\u201B\u2032\u2035\u0060\u00B4]/g, "'");
+        
+        setTypingText(normalizedSummary);
+        setTypedText('');
+        setCurrentTypingIndex(0);
+        setTypingErrors(0);
+        setTypingStartTime(Date.now());
+        setLastTypingTime(Date.now());
+        setTypingWPM(0);
+        setTypingComplete(false);
+        setTypingPaused(false);
+        setTotalPausedTime(0);
+        setPauseStartTime(null);
+        
+        setTimeout(() => {
+          if (typingInputRef.current) {
+            typingInputRef.current.focus();
+          }
+        }, 500);
+      };
+
+      const handleTypingInput = (e) => {
+        if (typingComplete) return;
+        
+        const currentTime = Date.now();
+        const inputValue = e.target.value;
+        
+        const normalizedInput = inputValue
+          .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"')
+          .replace(/[\u2018\u2019\u201A\u201B\u2032\u2035\u0060\u00B4]/g, "'");
+        
+        if (normalizedInput !== inputValue) {
+          console.log('Quote normalization occurred:', {
+            original: inputValue.substring(Math.max(0, inputValue.length - 10)),
+            normalized: normalizedInput.substring(Math.max(0, normalizedInput.length - 10))
+          });
+        }
+        
+        const expectedText = typingText.substring(0, normalizedInput.length);
+        const isCorrect = normalizedInput === expectedText;
+        
+        setLastTypingTime(currentTime);
+        
+        if (typingPaused) {
+          if (pauseStartTime) {
+            setTotalPausedTime(prev => prev + (currentTime - pauseStartTime));
+          }
+          setTypingPaused(false);
+          setPauseStartTime(null);
+        }
+        
+        if (isCorrect) {
+          setTypedText(normalizedInput);
+          setCurrentTypingIndex(normalizedInput.length);
+          
+          const activeTime = Math.max((currentTime - typingStartTime - totalPausedTime) / 1000 / 60, 0.01);
+          const wordsTyped = normalizedInput.length / 5;
+          const wpm = Math.round(wordsTyped / activeTime);
+          setTypingWPM(wpm);
+          
+          if (normalizedInput.length >= typingText.length) {
+            setTypingComplete(true);
+          }
+        } else {
+          if (inputValue.length > typedText.length) {
+            setTypingErrors(prev => prev + 1);
+            console.log('Character mismatch:', {
+              expected: expectedText[normalizedInput.length - 1],
+              expectedCode: expectedText.charCodeAt(normalizedInput.length - 1),
+              got: normalizedInput[normalizedInput.length - 1],
+              gotCode: normalizedInput.charCodeAt(normalizedInput.length - 1)
+            });
+          }
+        }
+      };
+
+      const calculateAccuracy = () => {
+        if (currentTypingIndex === 0) return 100;
+        const totalAttempts = currentTypingIndex + typingErrors;
+        return Math.round((currentTypingIndex / Math.max(totalAttempts, 1)) * 100);
+      };
+
+      useEffect(() => {
+        if (showTypingTrainer && !typingComplete && lastTypingTime && !typingPaused) {
+          pauseCheckRef.current = setInterval(() => {
+            const timeSinceLastType = Date.now() - lastTypingTime;
+            if (timeSinceLastType > 2000) {
+              setTypingPaused(true);
+              setPauseStartTime(Date.now());
+            }
+          }, 500);
+        }
+        
+        return () => {
+          if (pauseCheckRef.current) {
+            clearInterval(pauseCheckRef.current);
+          }
+        };
+      }, [showTypingTrainer, typingComplete, lastTypingTime, typingPaused]);
+      
+      useEffect(() => {
+        if (showTypingTrainer && !typingComplete && typingText) {
+          const textDisplay = document.querySelector('.typing-text-display');
+          if (textDisplay && currentTypingIndex > 0) {
+            const progress = currentTypingIndex / typingText.length;
+            const targetScroll = progress * textDisplay.scrollHeight;
+            textDisplay.scrollTo({ top: Math.max(0, targetScroll - 100), behavior: 'smooth' });
+          }
+        }
+      }, [currentTypingIndex, showTypingTrainer, typingComplete, typingText]);
+
+      const cleanMarkdownArtifacts = (text) => {
+        let cleaned = text;
+        
+        cleaned = cleaned
+          .replace(/\*{2,}(.*?)\*{2,}/g, '$1')
+          .replace(/_{2,}(.*?)_{2,}/g, '$1')
+          .replace(/(?<!\w)\*([^*\n]+?)\*(?!\w)/g, '$1')
+          .replace(/(?<!\w)_([^_\n\s]+?)_(?!\w)/g, '$1')
+          .replace(/```[\s\S]*?```/g, (match) => {
+            return match.replace(/```\w*\n?/, '').replace(/```$/, '').trim();
+          })
+          .replace(/`([^`\n]+?)`/g, '$1')
+          .replace(/^#{1,6}\s+(.+)$/gm, '$1')
+          .replace(/\[([^\]]+?)\]\([^)]*?\)/g, '$1')
+          .replace(/\[([^\]]+?)\]\[[^\]]*?\]/g, '$1')
+          .replace(/\[([^\]]+?)\]:\s*\S+/g, '')
+          .replace(/!\[([^\]]*?)\]\([^)]*?\)/g, '$1')
+          .replace(/^[\s]*[-*+•]\s+/gm, '')
+          .replace(/^[\s]*\d+\.\s+/gm, '')
+          .replace(/^[\s]*[a-zA-Z]\.\s+/gm, '')
+          .replace(/^[\s]*[ivxlcdm]+\.\s+/gi, '')
+          .replace(/^[\s]*>+\s*/gm, '')
+          .replace(/\|[\s\S]*?\|/g, (match) => {
+            return match.split('\n')
+              .filter(line => !line.match(/^[\s]*\|[\s-:|]*\|[\s]*$/))
+              .map(line => line.replace(/\|/g, ' ').trim())
+              .join('\n');
+          })
+          .replace(/^[\s]*[-*_=]{3,}[\s]*$/gm, '')
+          .replace(/~~(.*?)~~/g, '$1')
+          .replace(/\[\^\w+\]/g, '')
+          .replace(/^\[\^\w+\]:.*$/gm, '')
+          .replace(/<\/?[^>]+>/g, '')
+          .replace(/\$\$?(.*?)\$\$?/g, '$1')
+          .replace(/\\([*_`~\[\]()#+=\-!])/g, '$1')
+          .replace(/[ \t]+/g, ' ')
+          .replace(/\n[ \t]+/g, '\n')
+          .replace(/[ \t]+\n/g, '\n')
+          .replace(/\n{3,}/g, '\n\n')
+          .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"')
+          .replace(/[\u2018\u2019\u201A\u201B\u2032\u2035\u0060\u00B4]/g, "'")
+          .replace(/[\u2013]/g, '-')
+          .replace(/[\u2014]/g, ' - ')
+          .replace(/[\u2026]/g, '...')
+          .replace(/®/g, '')
+          .replace(/™/g, '')
+          .replace(/©/g, '')
+          .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, ' ')
+          .replace(/[\u2000-\u200A]/g, ' ')
+          .split('\n')
+          .map(line => line.trim())
+          .filter((line, index, array) => {
+            if (line === '') {
+              const prevLine = array[index - 1];
+              const nextLine = array[index + 1];
+              return prevLine && nextLine && prevLine !== '' && nextLine !== '';
+            }
+            return true;
+          })
+          .join('\n')
+          .trim();
+        
+        return cleaned;
+      };
+
+      const processText = (inputText) => {
+        const cleanText = inputText.trim();
+        const cleanedText = cleanMarkdownArtifacts(cleanText);
+        setRawOriginalText(cleanedText);
+        
+        const autoCleaned = autoCleanCharacters(cleanedText);
+        setOriginalText(autoCleaned);
+        
+        setIsOptimizing(true);
+        const optimized = optimizeTextForReading(autoCleaned);
+        setIsOptimizing(false);
+        
+        const paras = optimized.split(/\n\s*\n/).filter(p => p.trim());
+        setParagraphs(paras);
+        
+        const wordArray = [];
+        const paragraphMap = [];
+        
+        paras.forEach((para, paraIndex) => {
+          const paraWords = para.split(/\s+/).filter(w => w);
+          paraWords.forEach(word => {
+            wordArray.push(word);
+            paragraphMap.push(paraIndex);
+          });
+        });
+        
+        setWords(wordArray);
+        setWordParagraphMap(paragraphMap);
+        setCurrentIndex(0);
+        setCurrentWord(wordArray[0] || '');
+        setCurrentParagraph(0);
+        setIsFinished(false);
+        
+        if (optimized.length > 50) {
+          analyzeText(optimized);
+        }
+      };
+
+      const handleDrop = (e) => {
+        e.preventDefault();
+        const droppedText = e.dataTransfer.getData('text');
+        if (droppedText) {
+          processText(droppedText);
+        }
+      };
+
+      const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (file && file.type === 'text/plain') {
+          const reader = new FileReader();
+          reader.onload = (e) => processText(e.target.result);
+          reader.readAsText(file);
+        }
+      };
+
+      const startReading = () => {
+        if (words.length === 0) return;
+        
+        setIsPlaying(true);
+        
+        const playNextWord = () => {
+          setCurrentIndex(prev => {
+            const currentWord = words[prev];
+            const currentParagraphIndex = wordParagraphMap[prev];
+            const displayTime = getWordDisplayTime(currentWord, baseWpm);
+            
+            // Check if next word is in a different paragraph
+            const isLastWordOfParagraph = prev + 1 < words.length && 
+                                         wordParagraphMap[prev + 1] !== currentParagraphIndex;
+            
+            // Apply paragraph pause AFTER displaying the last word of the paragraph
+            const finalTime = isLastWordOfParagraph ? displayTime + paragraphPauseMs : displayTime;
+            
+            const next = prev + 1;
+            
+            if (next >= words.length) {
+              intervalRef.current = setTimeout(() => {
+                setIsPlaying(false);
+                setIsFinished(true);
+              }, finalTime);
+              return prev;
+            }
+            
+            intervalRef.current = setTimeout(() => {
+              const nextWord = words[next];
+              setCurrentWord(nextWord);
+              
+              const paragraphIndex = wordParagraphMap[next];
+              setCurrentParagraph(paragraphIndex);
+              
+              setCurrentIndex(next);
+              playNextWord();
+            }, finalTime);
+            
+            return prev;
+          });
+        };
+        
+        if (currentIndex >= words.length - 1) {
+          setIsPlaying(false);
+          setIsFinished(true);
+          return;
+        }
+        
+        playNextWord();
+      };
+
+      const stopReading = () => {
+        setIsPlaying(false);
+        if (intervalRef.current) {
+          clearTimeout(intervalRef.current);
+          intervalRef.current = null;
+        }
+      };
+
+      const resetReading = () => {
+        stopReading();
+        setCurrentIndex(0);
+        setCurrentWord(words[0] || '');
+        setCurrentParagraph(0);
+        setIsFinished(false);
+      };
+
+      useEffect(() => {
+        return () => {
+          if (intervalRef.current) {
+            clearTimeout(intervalRef.current);
+          }
+        };
+      }, []);
+      
+      useEffect(() => {
+        const handleKeyPress = (e) => {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            return;
+          }
+          
+          if (e.code === 'Space' && originalText && !showTypingTrainer) {
+            e.preventDefault();
+            if (isPlaying) {
+              stopReading();
+            } else {
+              startReading();
+            }
+          } else if (e.key === 'r' && originalText && !showTypingTrainer) {
+            e.preventDefault();
+            resetReading();
+          }
+        };
+        
+        window.addEventListener('keydown', handleKeyPress);
+        return () => window.removeEventListener('keydown', handleKeyPress);
+      }, [isPlaying, originalText, showTypingTrainer, words]);
+
+      // Component to render word with anchor letter highlighted
+      // The anchor letter always appears in the same position on screen
+      const WordDisplay = ({ word }) => {
+        const cleanWord = word.replace(/[^\w]/g, '');
+        const anchorPos = findAnchorPosition(word);
+        
+        // Find the actual anchor letter position in the original word (with punctuation)
+        let letterCount = 0;
+        let anchorIndex = -1;
+        
+        for (let i = 0; i < word.length; i++) {
+          if (/\w/.test(word[i])) {
+            if (letterCount === anchorPos) {
+              anchorIndex = i;
+              break;
+            }
+            letterCount++;
+          }
+        }
+        
+        if (anchorIndex === -1) {
+          return <span>{word}</span>;
+        }
+        
+        const before = word.substring(0, anchorIndex);
+        const anchor = word[anchorIndex];
+        const after = word.substring(anchorIndex + 1);
+        
+        return (
+          <span className="inline-flex items-center justify-center w-full">
+            <span className="text-right overflow-hidden" style={{ width: '45%', display: 'inline-block' }}>
+              <span className="text-gray-600 dark:text-gray-400">{before}</span>
+            </span>
+            <span className="text-red-600 dark:text-red-400 font-extrabold border-b-4 border-red-500 inline-block flex-shrink-0" style={{ width: '0.6em', textAlign: 'center' }}>{anchor}</span>
+            <span className="text-left overflow-hidden" style={{ width: '45%', display: 'inline-block' }}>
+              <span className="text-gray-600 dark:text-gray-400">{after}</span>
+            </span>
+          </span>
+        );
+      };
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300 p-4 lg:p-8">
+          <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-lg p-6 lg:p-10 dark:bg-gray-800 transition-colors duration-300">
+            
+            <div className="flex justify-between items-center mb-8">
+              <div className="flex items-center gap-3">
+                <Brain />
+                <h1 className="text-2xl lg:text-4xl font-bold text-gray-800 dark:text-gray-100">Power Reader - Speed Reader and Typing Tutor</h1>
+                <Zap />
+              </div>
+              <button
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                aria-label="Toggle dark mode"
+              >
+                {isDarkMode ? <Sun /> : <Moon />}
+              </button>
+            </div>
+
+            {!originalText && (
+              <div className="mb-8">
+                <div
+                  className="border-2 border-dashed border-indigo-300 rounded-lg p-12 text-center hover:border-indigo-400 transition-colors dark:border-indigo-700 dark:hover:border-indigo-500"
+                  onDrop={handleDrop}
+                  onDragOver={(e) => e.preventDefault()}
+                >
+                  <BookOpen />
+                  <p className="text-lg text-gray-600 mb-4 mt-4 dark:text-gray-400">
+                    Drop your text here, paste it below, or upload a file
+                  </p>
+                  <textarea
+                    className="w-full h-48 p-4 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+                    placeholder="Paste your text here to start speed reading...
+
+✨ Tips:
+• Paste any text - formatting will be cleaned automatically  
+• Press Ctrl/Cmd+Enter to process immediately
+• Minimum 10 characters required"
+                    autoFocus
+                    onChange={(e) => {
+                      const text = e.target.value.trim();
+                      if (text.length > 10) {
+                        processText(text);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                        const text = e.target.value.trim();
+                        if (text.length > 10) {
+                          processText(text);
+                        }
+                      }
+                    }}
+                  />
+                  
+                  <div className="mt-4 flex items-center justify-center gap-4">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".txt"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors dark:bg-indigo-500 dark:hover:bg-indigo-600"
+                    >
+                      <Upload />
+                      Upload Text File
+                    </button>
+                    
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={autoCleanEnabled}
+                        onChange={(e) => setAutoCleanEnabled(e.target.checked)}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">Auto-clean special characters (*_-)</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {(isOptimizing || isAnalyzing) && originalText && (
+              <div className="text-center p-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg mb-6 border-2 border-blue-200 dark:from-gray-700 dark:to-gray-600 dark:border-gray-600">
+                {isOptimizing && (
+                  <div className="mb-4">
+                    <div className="text-blue-800 text-xl font-bold mb-2 dark:text-blue-200">
+                      📝 Text Optimization in Progress...
+                    </div>
+                    <div className="text-blue-700 mb-3 dark:text-blue-300">
+                      Restructuring your text for optimal speed reading
+                    </div>
+                  </div>
+                )}
+                {isAnalyzing && !isOptimizing && (
+                  <div>
+                    <div className="text-indigo-800 text-xl font-bold mb-2 dark:text-indigo-200">
+                      📊 Analyzing Text...
+                    </div>
+                    <div className="text-indigo-600 dark:text-indigo-300">
+                      Calculating complexity and optimal reading speed
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {originalText && !isOptimizing && (
+              <div className="space-y-6">
+                
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-6 space-y-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    
+                    <div className="flex items-center gap-3 justify-center lg:justify-start">
+                      <button
+                        onClick={isPlaying ? stopReading : startReading}
+                        disabled={words.length === 0}
+                        className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${
+                          isPlaying
+                            ? 'bg-red-600 hover:bg-red-700 text-white'
+                            : 'bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400'
+                        }`}
+                      >
+                        {isPlaying ? <Pause /> : <Play />}
+                        {isPlaying ? 'Pause' : 'Start'}
+                      </button>
+
+                      <button
+                        onClick={resetReading}
+                        className="flex items-center gap-2 px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors dark:bg-gray-500 dark:hover:bg-gray-400"
+                      >
+                        <RotateCcw />
+                        Reset
+                      </button>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 bg-white dark:bg-gray-600 rounded-lg p-3">
+                      <span className="text-sm font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">Speed:</span>
+                      <input
+                        type="range"
+                        min="100"
+                        max="500"
+                        value={baseWpm}
+                        onChange={(e) => setBaseWpm(Number(e.target.value))}
+                        className="flex-1"
+                      />
+                      <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 w-20 text-right">{baseWpm} WPM</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 bg-white dark:bg-gray-600 rounded-lg p-3">
+                      <span className="text-sm font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">Pause:</span>
+                      <input
+                        type="range"
+                        min="0"
+                        max="2000"
+                        step="100"
+                        value={paragraphPauseMs}
+                        onChange={(e) => setParagraphPauseMs(Number(e.target.value))}
+                        className="flex-1"
+                      />
+                      <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 w-16 text-right">{paragraphPauseMs}ms</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <label className="flex items-center gap-2 cursor-pointer bg-white dark:bg-gray-600 px-4 py-2 rounded-lg">
+                      <input
+                        type="checkbox"
+                        checked={autoCleanEnabled}
+                        onChange={(e) => {
+                          setAutoCleanEnabled(e.target.checked);
+                          if (rawOriginalText) {
+                            const autoCleaned = e.target.checked ? autoCleanCharacters(rawOriginalText) : rawOriginalText;
+                            setOriginalText(autoCleaned);
+                            
+                            setIsOptimizing(true);
+                            const optimized = optimizeTextForReading(autoCleaned);
+                            setIsOptimizing(false);
+                            
+                            const paras = optimized.split(/\n\s*\n/).filter(p => p.trim());
+                            setParagraphs(paras);
+                            
+                            const wordArray = [];
+                            const paragraphMap = [];
+                            
+                            paras.forEach((para, paraIndex) => {
+                              const paraWords = para.split(/\s+/).filter(w => w);
+                              paraWords.forEach(word => {
+                                wordArray.push(word);
+                                paragraphMap.push(paraIndex);
+                              });
+                            });
+                            
+                            setWords(wordArray);
+                            setWordParagraphMap(paragraphMap);
+                            setCurrentIndex(0);
+                            setCurrentWord(wordArray[0] || '');
+                            setCurrentParagraph(0);
+                            setIsFinished(false);
+                            
+                            if (optimized.length > 50) {
+                              analyzeText(optimized);
+                            }
+                          }
+                        }}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">Auto-clean special chars</span>
+                    </label>
+                    
+                    <button
+                      onClick={() => {
+                        if (confirm('Load new text? Current progress will be lost.')) {
+                          setOriginalText('');
+                          setOptimizedText('');
+                          setWords([]);
+                          setCurrentWord('');
+                          setCurrentIndex(0);
+                          setIsFinished(false);
+                          setShowTypingTrainer(false);
+                          setTypingComplete(false);
+                          setRawOriginalText('');
+                          stopReading();
+                        }
+                      }}
+                      className="flex items-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors dark:bg-indigo-500 dark:hover:bg-indigo-600 font-medium"
+                    >
+                      📄 Load New Text
+                    </button>
+                  </div>
+                </div>
+
+                <div className="text-center bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-16 lg:p-24 border-2 border-indigo-200 dark:from-gray-700 dark:to-gray-600 dark:border-gray-500 transition-colors duration-300">
+                  <div className="font-bold text-gray-800 dark:text-gray-100 mb-8 flex justify-center items-center" style={{ fontFamily: 'monospace', letterSpacing: '-0.05em', minHeight: '1.2em', fontSize: 'clamp(3rem, 5.25vw, 6.75rem)' }}>
+                    <WordDisplay word={currentWord} />
+                  </div>
+                  
+                  <div className="text-xl lg:text-2xl text-gray-600 dark:text-gray-400 mb-6">
+                    Word {currentIndex + 1} of {words.length} • Paragraph {currentParagraph + 1} of {paragraphs.length}
+                    <div className="text-base mt-2">
+                      Progress: {Math.round(((currentIndex + 1) / words.length) * 100)}%
+                      {!isFinished && words.length > 0 && (
+                        <span className="ml-3">
+                          ⏱️ Est. {Math.ceil((words.length - currentIndex - 1) * (60 / baseWpm) / 60)} min remaining
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="max-w-3xl mx-auto w-full bg-gray-200 rounded-full h-3 dark:bg-gray-600">
+                    <div
+                      className="bg-gradient-to-r from-indigo-500 to-purple-500 h-3 rounded-full transition-all duration-300"
+                      style={{ width: `${((currentIndex + 1) / words.length) * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 dark:bg-yellow-900/50 dark:border-yellow-700 transition-colors duration-300">
+                  <p className="text-amber-800 text-center text-sm dark:text-yellow-200">
+                    💡 Word timing adapts automatically based on length and complexity • The <span className="text-red-600 font-bold">anchor letter</span> (highlighted in red) marks the optimal reading point
+                    {autoCleanEnabled && <span className="block mt-1">🧹 Auto-cleaning enabled: removes *, _, and excess formatting</span>}
+                    <span className="block mt-1">⌨️ Shortcuts: Press <kbd className="px-2 py-1 bg-amber-100 dark:bg-yellow-800 rounded">Space</kbd> to play/pause • <kbd className="px-2 py-1 bg-amber-100 dark:bg-yellow-800 rounded">R</kbd> to reset</span>
+                  </p>
+                </div>
+
+                {isFinished && (
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center dark:bg-green-900/50 dark:border-green-700 transition-colors duration-300">
+                    <div className="text-3xl mb-4 text-gray-800 dark:text-green-100">🎉 Reading Complete!</div>
+                    <div className="text-green-700 mb-4 text-lg dark:text-green-300">
+                      You've successfully completed the speed reading session. Ready to reinforce your learning?
+                    </div>
+                    <div className="flex gap-4 justify-center">
+                      <button
+                        onClick={startTypingTrainer}
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-lg dark:bg-purple-500 dark:hover:bg-purple-600"
+                      >
+                        ⌨️ Typing Trainer
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {showTypingTrainer && typingText && (
+                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-6 lg:p-8 dark:bg-purple-900/50 dark:border-purple-700 transition-colors duration-300">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-xl lg:text-2xl font-bold text-purple-800 flex items-center gap-2 dark:text-purple-200">
+                        ⌨️ Typing Challenge - Reinforce Your Learning!
+                      </h3>
+                      <button
+                        onClick={() => setShowTypingTrainer(false)}
+                        className="text-purple-600 hover:text-purple-800 text-xl dark:text-purple-400 dark:hover:text-purple-300"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    
+                    <div className="text-purple-700 mb-4 text-sm bg-purple-100 p-3 rounded-lg dark:bg-purple-800 dark:text-purple-200">
+                      💡 Practice typing an excerpt from your reading to reinforce retention. The text ends at a complete sentence for natural practice.
+                      <div className="mt-1">📝 Total words to type: {typingText.split(/\s+/).length} words (~{Math.ceil(typingText.split(/\s+/).length / 40)} min at 40 WPM)</div>
+                      {typingPaused && <div className="mt-1 text-orange-700 font-bold dark:text-orange-400">⏸️ Timer paused - resume typing to continue</div>}
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+                      <div className="bg-white p-4 rounded-lg text-center shadow-sm dark:bg-gray-700">
+                        <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">{typingWPM}</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">WPM</div>
+                      </div>
+                      <div className="bg-white p-4 rounded-lg text-center shadow-sm dark:bg-gray-700">
+                        <div className="text-3xl font-bold text-green-600 dark:text-green-400">{calculateAccuracy()}%</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Accuracy</div>
+                      </div>
+                      <div className="bg-white p-4 rounded-lg text-center shadow-sm dark:bg-gray-700">
+                        <div className="text-3xl font-bold text-red-600 dark:text-red-400">{typingErrors}</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Errors</div>
+                      </div>
+                    </div>
+                    
+                    {!typingComplete ? (
+                      <div>
+                        <div className="typing-text-display bg-white p-6 rounded-lg shadow-inner text-lg lg:text-xl font-mono tracking-wide leading-relaxed dark:bg-gray-800 mb-4 whitespace-pre-wrap max-h-96 overflow-y-auto">
+                          <span className="text-green-600 dark:text-green-400">{typedText}</span>
+                          {currentTypingIndex < typingText.length && (
+                            <span className="animate-pulse bg-yellow-200 dark:bg-yellow-400 text-black rounded-sm px-0.5 font-bold">
+                              {typingText[currentTypingIndex] === ' ' ? '\u00A0' : typingText[currentTypingIndex]}
+                            </span>
+                          )}
+                          <span className="text-gray-400 dark:text-gray-500">{typingText.substring(currentTypingIndex + 1)}</span>
+                        </div>
+                        
+                        <div className="mb-2 text-center">
+                          <span className="text-sm text-purple-600 dark:text-purple-400 font-medium">Next character: </span>
+                          <span className="inline-block px-3 py-1 bg-yellow-200 dark:bg-yellow-400 text-black font-bold rounded text-lg">
+                            {typingText[currentTypingIndex] === ' ' ? '_' : `"${typingText[currentTypingIndex]}"`}
+                          </span>
+                        </div>
+                        <input
+                          ref={typingInputRef}
+                          type="text"
+                          value={typedText}
+                          onChange={handleTypingInput}
+                          placeholder="Start typing here..."
+                          className="w-full p-4 border-2 border-purple-300 rounded-lg font-mono text-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:border-purple-600 dark:text-white shadow-sm"
+                          autoComplete="off"
+                          spellCheck="false"
+                        />
+                        <div className="text-sm text-purple-600 dark:text-purple-400 mt-2 text-center">
+                          💡 Tip: Type exactly as shown above. Incorrect characters won't be accepted.
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center dark:bg-green-900/50 dark:border-green-700">
+                        <h4 className="text-2xl font-bold text-green-800 mb-3 dark:text-green-200">🎉 Challenge Complete!</h4>
+                        <div className="flex flex-wrap justify-center gap-6 text-lg text-gray-700 dark:text-gray-300 mb-4">
+                          <div className="bg-white dark:bg-gray-700 px-4 py-2 rounded-lg shadow">
+                            <span className="font-bold text-purple-600 dark:text-purple-400">{typingWPM} WPM</span>
+                          </div>
+                          <div className="bg-white dark:bg-gray-700 px-4 py-2 rounded-lg shadow">
+                            <span className="font-bold text-green-600 dark:text-green-400">{calculateAccuracy()}% Accuracy</span>
+                          </div>
+                          <div className="bg-white dark:bg-gray-700 px-4 py-2 rounded-lg shadow">
+                            <span className="font-bold text-red-600 dark:text-red-400">{typingErrors} Errors</span>
+                          </div>
+                        </div>
+                        <div className="text-sm text-green-700 dark:text-green-300 mb-4">
+                          Great job! You've reinforced your learning through active typing.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                <div className="mt-8">
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">Processed Text</h3>
+                  <pre className="w-full h-96 p-4 bg-gray-50 border border-gray-200 rounded-lg overflow-auto text-base text-gray-700 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300">
+                    {optimizedText}
+                  </pre>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<SpeedReader />);
+  </script>
+</body>
+</html>
