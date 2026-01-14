@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -75,6 +74,30 @@
           root.classList.remove('dark');
         }
       }, [isDarkMode]);
+
+      // Function to find the optimal reading point (anchor letter)
+      // For most words, the anchor should be slightly left of center
+      const findAnchorPosition = (word) => {
+        const cleanWord = word.replace(/[^\w]/g, '');
+        const length = cleanWord.length;
+        
+        // Optimal Reading Point formula - slightly left of center
+        if (length === 1) return 0;
+        if (length === 2) return 0;
+        if (length === 3) return 1;
+        if (length === 4) return 1;
+        if (length === 5) return 2;
+        if (length === 6) return 2;
+        if (length === 7) return 3;
+        if (length === 8) return 3;
+        if (length === 9) return 4;
+        if (length === 10) return 4;
+        if (length === 11) return 4;
+        if (length === 12) return 5;
+        if (length === 13) return 5;
+        // For longer words, use a formula: roughly at 1/3 to center
+        return Math.floor(length / 2.5);
+      };
 
       const getWordDisplayTime = (word, baseWpm) => {
         const baseTime = 60000 / baseWpm;
@@ -177,19 +200,15 @@
         setShowTypingTrainer(true);
         
         const words = optimizedText.split(/\s+/);
-        // Take more words for better coverage (300 instead of 150)
         const targetWordCount = Math.min(300, words.length);
         let excerpt = words.slice(0, targetWordCount).join(' ');
         
-        // If we didn't take all the text, try to end at a sentence boundary
         if (targetWordCount < words.length) {
-          // Find the last sentence ending punctuation
           const lastPeriod = excerpt.lastIndexOf('.');
           const lastQuestion = excerpt.lastIndexOf('?');
           const lastExclamation = excerpt.lastIndexOf('!');
           const lastSentenceEnd = Math.max(lastPeriod, lastQuestion, lastExclamation);
           
-          // If we found a sentence ending, cut there (plus one to include the punctuation)
           if (lastSentenceEnd > excerpt.length * 0.7) {
             excerpt = excerpt.substring(0, lastSentenceEnd + 1);
           }
@@ -201,7 +220,6 @@
           .replace(/\s+/g, ' ')
           .trim();
         
-        // Ensure all quotes are normalized to ASCII characters
         const normalizedSummary = cleanSummary
           .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"')
           .replace(/[\u2018\u2019\u201A\u201B\u2032\u2035\u0060\u00B4]/g, "'");
@@ -231,12 +249,10 @@
         const currentTime = Date.now();
         const inputValue = e.target.value;
         
-        // Normalize quotes as safety measure
         const normalizedInput = inputValue
           .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"')
           .replace(/[\u2018\u2019\u201A\u201B\u2032\u2035\u0060\u00B4]/g, "'");
         
-        // Log if normalization changed anything (for debugging)
         if (normalizedInput !== inputValue) {
           console.log('Quote normalization occurred:', {
             original: inputValue.substring(Math.max(0, inputValue.length - 10)),
@@ -272,7 +288,6 @@
         } else {
           if (inputValue.length > typedText.length) {
             setTypingErrors(prev => prev + 1);
-            // Log what character was expected vs what was typed
             console.log('Character mismatch:', {
               expected: expectedText[normalizedInput.length - 1],
               expectedCode: expectedText.charCodeAt(normalizedInput.length - 1),
@@ -280,7 +295,6 @@
               gotCode: normalizedInput.charCodeAt(normalizedInput.length - 1)
             });
           }
-          // Controlled input will revert to typedText automatically
         }
       };
 
@@ -308,7 +322,6 @@
         };
       }, [showTypingTrainer, typingComplete, lastTypingTime, typingPaused]);
       
-      // Auto-scroll typing display to keep current character visible
       useEffect(() => {
         if (showTypingTrainer && !typingComplete && typingText) {
           const textDisplay = document.querySelector('.typing-text-display');
@@ -447,35 +460,39 @@
         
         const playNextWord = () => {
           setCurrentIndex(prev => {
+            const currentWord = words[prev];
+            const currentParagraphIndex = wordParagraphMap[prev];
+            const displayTime = getWordDisplayTime(currentWord, baseWpm);
+            
+            // Check if next word is in a different paragraph
+            const isLastWordOfParagraph = prev + 1 < words.length && 
+                                         wordParagraphMap[prev + 1] !== currentParagraphIndex;
+            
+            // Apply paragraph pause AFTER displaying the last word of the paragraph
+            const finalTime = isLastWordOfParagraph ? displayTime + paragraphPauseMs : displayTime;
+            
             const next = prev + 1;
             
             if (next >= words.length) {
-              setIsPlaying(false);
-              setIsFinished(true);
-              return words.length - 1;
-            }
-            
-            const nextWord = words[next];
-            setCurrentWord(nextWord);
-            
-            const paragraphIndex = wordParagraphMap[next];
-            setCurrentParagraph(paragraphIndex);
-            
-            const isParagraphBreak = next > 0 && wordParagraphMap[next] !== wordParagraphMap[next - 1];
-            
-            if (next + 1 < words.length) {
-              const displayTime = getWordDisplayTime(nextWord, baseWpm);
-              const finalTime = isParagraphBreak ? displayTime + paragraphPauseMs : displayTime;
-              intervalRef.current = setTimeout(playNextWord, finalTime);
-            } else {
-              const displayTime = getWordDisplayTime(nextWord, baseWpm);
               intervalRef.current = setTimeout(() => {
                 setIsPlaying(false);
                 setIsFinished(true);
-              }, displayTime);
+              }, finalTime);
+              return prev;
             }
             
-            return next;
+            intervalRef.current = setTimeout(() => {
+              const nextWord = words[next];
+              setCurrentWord(nextWord);
+              
+              const paragraphIndex = wordParagraphMap[next];
+              setCurrentParagraph(paragraphIndex);
+              
+              setCurrentIndex(next);
+              playNextWord();
+            }, finalTime);
+            
+            return prev;
           });
         };
         
@@ -485,8 +502,7 @@
           return;
         }
         
-        const displayTime = getWordDisplayTime(words[currentIndex], baseWpm);
-        intervalRef.current = setTimeout(playNextWord, displayTime);
+        playNextWord();
       };
 
       const stopReading = () => {
@@ -513,10 +529,8 @@
         };
       }, []);
       
-      // Keyboard shortcuts
       useEffect(() => {
         const handleKeyPress = (e) => {
-          // Only handle shortcuts if not typing in an input/textarea
           if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
             return;
           }
@@ -537,6 +551,47 @@
         window.addEventListener('keydown', handleKeyPress);
         return () => window.removeEventListener('keydown', handleKeyPress);
       }, [isPlaying, originalText, showTypingTrainer, words]);
+
+      // Component to render word with anchor letter highlighted
+      // The anchor letter always appears in the same position on screen
+      const WordDisplay = ({ word }) => {
+        const cleanWord = word.replace(/[^\w]/g, '');
+        const anchorPos = findAnchorPosition(word);
+        
+        // Find the actual anchor letter position in the original word (with punctuation)
+        let letterCount = 0;
+        let anchorIndex = -1;
+        
+        for (let i = 0; i < word.length; i++) {
+          if (/\w/.test(word[i])) {
+            if (letterCount === anchorPos) {
+              anchorIndex = i;
+              break;
+            }
+            letterCount++;
+          }
+        }
+        
+        if (anchorIndex === -1) {
+          return <span>{word}</span>;
+        }
+        
+        const before = word.substring(0, anchorIndex);
+        const anchor = word[anchorIndex];
+        const after = word.substring(anchorIndex + 1);
+        
+        return (
+          <span className="inline-flex items-center justify-center w-full">
+            <span className="text-right overflow-hidden" style={{ width: '45%', display: 'inline-block' }}>
+              <span className="text-gray-600 dark:text-gray-400">{before}</span>
+            </span>
+            <span className="text-red-600 dark:text-red-400 font-extrabold border-b-4 border-red-500 inline-block flex-shrink-0" style={{ width: '0.6em', textAlign: 'center' }}>{anchor}</span>
+            <span className="text-left overflow-hidden" style={{ width: '45%', display: 'inline-block' }}>
+              <span className="text-gray-600 dark:text-gray-400">{after}</span>
+            </span>
+          </span>
+        );
+      };
 
       return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300 p-4 lg:p-8">
@@ -651,11 +706,9 @@
             {originalText && !isOptimizing && (
               <div className="space-y-6">
                 
-                {/* Desktop-optimized control panel */}
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-6 space-y-4">
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     
-                    {/* Playback controls */}
                     <div className="flex items-center gap-3 justify-center lg:justify-start">
                       <button
                         onClick={isPlaying ? stopReading : startReading}
@@ -679,7 +732,6 @@
                       </button>
                     </div>
                     
-                    {/* Speed control */}
                     <div className="flex items-center gap-3 bg-white dark:bg-gray-600 rounded-lg p-3">
                       <span className="text-sm font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">Speed:</span>
                       <input
@@ -693,7 +745,6 @@
                       <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 w-20 text-right">{baseWpm} WPM</span>
                     </div>
                     
-                    {/* Paragraph pause control */}
                     <div className="flex items-center gap-3 bg-white dark:bg-gray-600 rounded-lg p-3">
                       <span className="text-sm font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">Pause:</span>
                       <input
@@ -709,7 +760,6 @@
                     </div>
                   </div>
                   
-                  {/* Second row with auto-clean and Load New Text */}
                   <div className="flex justify-between items-center">
                     <label className="flex items-center gap-2 cursor-pointer bg-white dark:bg-gray-600 px-4 py-2 rounded-lg">
                       <input
@@ -778,10 +828,9 @@
                   </div>
                 </div>
 
-                {/* Enhanced word display - bigger for desktop */}
                 <div className="text-center bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-16 lg:p-24 border-2 border-indigo-200 dark:from-gray-700 dark:to-gray-600 dark:border-gray-500 transition-colors duration-300">
-                  <div className="text-7xl lg:text-9xl font-bold text-gray-800 dark:text-gray-100 mb-8">
-                    {currentWord}
+                  <div className="font-bold text-gray-800 dark:text-gray-100 mb-8 flex justify-center items-center" style={{ fontFamily: 'monospace', letterSpacing: '-0.05em', minHeight: '1.2em', fontSize: 'clamp(3rem, 5.25vw, 6.75rem)' }}>
+                    <WordDisplay word={currentWord} />
                   </div>
                   
                   <div className="text-xl lg:text-2xl text-gray-600 dark:text-gray-400 mb-6">
@@ -806,7 +855,7 @@
 
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 dark:bg-yellow-900/50 dark:border-yellow-700 transition-colors duration-300">
                   <p className="text-amber-800 text-center text-sm dark:text-yellow-200">
-                    💡 Word timing adapts automatically based on length and complexity • Brief pause at paragraph breaks
+                    💡 Word timing adapts automatically based on length and complexity • The <span className="text-red-600 font-bold">anchor letter</span> (highlighted in red) marks the optimal reading point
                     {autoCleanEnabled && <span className="block mt-1">🧹 Auto-cleaning enabled: removes *, _, and excess formatting</span>}
                     <span className="block mt-1">⌨️ Shortcuts: Press <kbd className="px-2 py-1 bg-amber-100 dark:bg-yellow-800 rounded">Space</kbd> to play/pause • <kbd className="px-2 py-1 bg-amber-100 dark:bg-yellow-800 rounded">R</kbd> to reset</span>
                   </p>
@@ -866,7 +915,6 @@
                     
                     {!typingComplete ? (
                       <div>
-                        {/* Text Display */}
                         <div className="typing-text-display bg-white p-6 rounded-lg shadow-inner text-lg lg:text-xl font-mono tracking-wide leading-relaxed dark:bg-gray-800 mb-4 whitespace-pre-wrap max-h-96 overflow-y-auto">
                           <span className="text-green-600 dark:text-green-400">{typedText}</span>
                           {currentTypingIndex < typingText.length && (
@@ -877,7 +925,6 @@
                           <span className="text-gray-400 dark:text-gray-500">{typingText.substring(currentTypingIndex + 1)}</span>
                         </div>
                         
-                        {/* Typing Input */}
                         <div className="mb-2 text-center">
                           <span className="text-sm text-purple-600 dark:text-purple-400 font-medium">Next character: </span>
                           <span className="inline-block px-3 py-1 bg-yellow-200 dark:bg-yellow-400 text-black font-bold rounded text-lg">
